@@ -11,9 +11,14 @@
 
         <receiver
             android:name="com.netgalaxystudios.plugins.geofence.GeoFenceBroadcastReceiver"
-            android:exported="true"
-            android:foregroundServiceType="location"
-            />
+            android:exported="false" />
+        <receiver
+            android:name=".BootReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
         <service
             android:name=".TransitionJobService"
             android:permission="android.permission.BIND_JOB_SERVICE"

@@ -38,8 +38,6 @@ export interface Geofence {
   longitude: number;
   radius: number;
   transitionType: number;
-  startTime?: Date;
-  endTime?: Date;
   notification?: Notification;
   url?: string,
   headers?: {

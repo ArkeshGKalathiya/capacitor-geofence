@@ -28,19 +28,19 @@ public class GeoFenceWithHttp {
     final private GeoNotificationStore store;
 
     GeoFenceWithHttp(Context c){
-
         this.context = c;
         this.store = new GeoNotificationStore(c);
-    }
-
-
-    public void initialize(Context context) {
         this.client = LocationServices.getGeofencingClient(context);
     }
 
     public Boolean isLocationServicesEnabled() {
         LocationManager lm = (LocationManager) context.getSystemService(Context.LOCATION_SERVICE);
         return LocationManagerCompat.isLocationEnabled(lm);
+    }
+
+    public void loadFromStorageAndInitializeGeofences() {
+        List<GeoNotification> geoNotifications = store.getAll();
+        addOrUpdateGeofence(null,geoNotifications);
     }
 
 
@@ -62,8 +62,16 @@ public class GeoFenceWithHttp {
         }
 
         this.client.addGeofences(request, getIntent())
-                .addOnSuccessListener(unused -> call.resolve())
-                .addOnFailureListener(e -> call.reject("FAILED",e));
+                .addOnSuccessListener(unused -> {
+                    if(call != null){
+                        call.resolve();
+                    }
+                })
+                .addOnFailureListener(e -> {
+                    if(call != null){
+                        call.reject("FAILED",e);
+                    }
+                });
     }
 
     public void removeWithIds(List<String> geofenceIds){

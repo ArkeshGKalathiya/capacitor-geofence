@@ -9,7 +9,6 @@ import android.net.Uri;
 import androidx.core.app.NotificationCompat;
 
 import com.getcapacitor.plugin.util.AssetUtil;
-import com.google.gson.Gson;
 import com.google.gson.annotations.Expose;
 
 import java.util.Date;
@@ -107,7 +106,7 @@ public class Notification {
             return "";
         }
 
-        return new Gson().toJson(this.data);
+        return Gson.get().toJson(this.data);
     }
 
     public long[] getVibrate() {

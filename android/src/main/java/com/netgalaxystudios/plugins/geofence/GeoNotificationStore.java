@@ -3,7 +3,6 @@ package com.netgalaxystudios.plugins.geofence;
 
 import android.content.Context;
 
-import com.google.gson.Gson;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -16,7 +15,7 @@ public class GeoNotificationStore {
     }
 
     public void setGeoNotification(GeoNotification geoNotification) {
-        storage.setItem(geoNotification.id, new Gson().toJson(geoNotification));
+        storage.setItem(geoNotification.id, Gson.get().toJson(geoNotification));
     }
 
     public GeoNotification getGeoNotification(String id) {

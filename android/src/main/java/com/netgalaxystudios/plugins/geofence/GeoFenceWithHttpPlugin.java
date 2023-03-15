@@ -76,7 +76,6 @@ public class GeoFenceWithHttpPlugin extends Plugin {
     public void initialize(PluginCall call) {
         Logger.setLogger(new Logger(TAG,getContext(),false));
         implementation = new GeoFenceWithHttp(getContext());
-        implementation.initialize(getContext());
         call.resolve();
     }
 

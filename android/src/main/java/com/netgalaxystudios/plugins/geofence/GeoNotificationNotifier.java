@@ -9,6 +9,7 @@ import android.content.Intent;
 import android.media.Ringtone;
 import android.media.RingtoneManager;
 import android.net.Uri;
+import android.os.Build;
 import android.util.Log;
 
 import androidx.core.app.NotificationCompat;
@@ -59,13 +60,18 @@ public class GeoNotificationNotifier {
                 resultIntent.putExtra("geofence.notification.data", notification.getDataJson());
             }
 
+            int flag = PendingIntent.FLAG_UPDATE_CURRENT;
+            if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.S){
+                flag = flag | PendingIntent.FLAG_MUTABLE;
+            }
+
             resultIntent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
 
             PendingIntent resultPendingIntent =
                     PendingIntent.getActivity(context,
                             notification.id,
                             resultIntent,
-                            PendingIntent.FLAG_UPDATE_CURRENT
+                            flag
                     );
 
             mBuilder.setContentIntent(resultPendingIntent);

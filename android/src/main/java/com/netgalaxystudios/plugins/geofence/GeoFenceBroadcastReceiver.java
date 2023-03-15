@@ -41,17 +41,23 @@ public class GeoFenceBroadcastReceiver extends BroadcastReceiver {
                 context
         );
 
-
         GeofencingEvent geofencingEvent = GeofencingEvent.fromIntent(intent);
+        Logger.getLogger().log(geofencingEvent.toString(),null);
+        if(geofencingEvent == null){
+            return;
+        }
+
+
+        Logger.getLogger().log(geofencingEvent.getGeofenceTransition()+" <--- transition ,"+geofencingEvent.getTriggeringLocation().toString(),null);
         if(geofencingEvent.hasError() == false){
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                geofencingEvent.getTriggeringGeofences().forEach(geofence -> handleTrigger(context,geofence));
+                geofencingEvent.getTriggeringGeofences().forEach(geofence -> handleTrigger(context,geofence,geofencingEvent.getGeofenceTransition()));
             }
         }
 
     }
 
-    public void handleTrigger(Context context, Geofence fence){
+    public void handleTrigger(Context context, Geofence fence, int transitionType){
         String fenceId = fence.getRequestId();
 
         GeoNotification geoNotification = store.getGeoNotification(fenceId);
@@ -59,7 +65,6 @@ public class GeoFenceBroadcastReceiver extends BroadcastReceiver {
             return;
         }
 
-        int transitionType = fence.getTransitionTypes();
         String transition = "";
         boolean isDwell = transitionType == Geofence.GEOFENCE_TRANSITION_DWELL;
         if(isDwell){
@@ -109,16 +114,5 @@ public class GeoFenceBroadcastReceiver extends BroadcastReceiver {
                         .setExtras(bundle)
                         .build());
 
-    }
-
-    private void updateLastTriggeredByNotificationId(int id, List<GeoNotification> geoList) {
-        if (geoList != null) {
-            for (GeoNotification geo : geoList) {
-                if (geo.notification != null && geo.notification.id == id) {
-                    geo.notification.setLastTriggered();
-                    store.setGeoNotification(geo);
-                }
-            }
-        }
     }
 }
