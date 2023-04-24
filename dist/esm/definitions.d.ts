@@ -7,7 +7,7 @@ export interface GeoFenceWithHttpPlugin {
         fenceIds: string[];
     }): Promise<any>;
     removeAll(): Promise<any>;
-    onTransition(callback: (fence: Geofence, error: any) => void): Promise<any>;
+    onTransition(): Promise<any>;
     requestLocationPermission(): Promise<{
         foreground: boolean;
         background: boolean;

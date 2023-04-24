@@ -61,20 +61,12 @@
       },
       {
         "name": "onTransition",
-        "signature": "(callback: (fence: Geofence, error: any) => void) => Promise<any>",
-        "parameters": [
-          {
-            "name": "callback",
-            "docs": "",
-            "type": "(fence: Geofence, error: any) => void"
-          }
-        ],
+        "signature": "() => Promise<any>",
+        "parameters": [],
         "returns": "Promise<any>",
         "tags": [],
         "docs": "",
-        "complexTypes": [
-          "Geofence"
-        ],
+        "complexTypes": [],
         "slug": "ontransition"
       },
       {

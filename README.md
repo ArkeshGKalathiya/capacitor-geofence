@@ -17,7 +17,7 @@ npx cap sync
 * [`addOrUpdate(...)`](#addorupdate)
 * [`removeForIds(...)`](#removeforids)
 * [`removeAll()`](#removeall)
-* [`onTransition(...)`](#ontransition)
+* [`onTransition()`](#ontransition)
 * [`requestLocationPermission()`](#requestlocationpermission)
 * [`permissionStatus()`](#permissionstatus)
 * [Interfaces](#interfaces)
@@ -79,15 +79,11 @@ removeAll() => Promise<any>
 --------------------
 
 
-### onTransition(...)
+### onTransition()
 
 ```typescript
-onTransition(callback: (fence: Geofence, error: any) => void) => Promise<any>
+onTransition() => Promise<any>
 ```
-
-| Param          | Type                                                                          |
-| -------------- | ----------------------------------------------------------------------------- |
-| **`callback`** | <code>(fence: <a href="#geofence">Geofence</a>, error: any) =&gt; void</code> |
 
 **Returns:** <code>Promise&lt;any&gt;</code>
 

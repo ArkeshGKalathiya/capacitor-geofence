@@ -4,7 +4,6 @@ import Capacitor
 import WebKit
 import UserNotifications
 import CoreLocation
-import SwiftJson
 
 
 let TAG = "GeofencePlugin"
@@ -27,18 +26,24 @@ func log(_ messages: [String]) {
 @objc(GeoFenceWithHttpPlugin)
 public class GeoFenceWithHttpPlugin: CAPPlugin, CLLocationManagerDelegate {
     private let implementation = GeoFenceWithHttp();
-    
-    lazy var geoNotificationManager = GeoNotificationManager()
+    private let decoder = JSONDecoder();
+    private let geoNotificationManager : GeoNotificationManager;
     let priority = DispatchQoS.QoSClass.default
     
     private let locationManager : CLLocationManager;
     var permissionCallbackId : String?;
-
+    var transitionCallbackId : String?;
+    var localNotificationCallbackId : String?;
+    
     
     public override init(bridge: CAPBridgeProtocol, pluginId: String, pluginName: String) {
         self.locationManager = CLLocationManager();
+        self.geoNotificationManager = GeoNotificationManager();
         super.init(bridge: bridge, pluginId: pluginId, pluginName: pluginName);
+        
         self.locationManager.delegate = self;
+        self.geoNotificationManager.isActive = true;
+        self.geoNotificationManager.startUpdatingLocation();
         
         
     }
@@ -46,28 +51,34 @@ public class GeoFenceWithHttpPlugin: CAPPlugin, CLLocationManagerDelegate {
     
     @objc func initialize(_ call : CAPPluginCall){
         
-//        NotificationCenter.default.addObserver(
-//            self,
-//            selector: #selector(GeoFenceWithHttpPlugin.didReceiveLocalNotification(_:)),
-//            name: NSNotification.Name(rawValue: "CDVLocalNotification"),
-//            object: nil
-//        )
-//
-//        NotificationCenter.default.addObserver(
-//            self,
-//            selector: #selector(GeoFenceWithHttpPlugin.didReceiveTransition(_:)),
-//            name: NSNotification.Name(rawValue: "handleTransition"),
-//            object: nil
-//        )
-        geoNotificationManager = GeoNotificationManager()
+        //        NotificationCenter.default.addObserver(
+        //            self,
+        //            selector: #selector(GeoFenceWithHttpPlugin.didReceiveLocalNotification(_:)),
+        //            name: NSNotification.Name(rawValue: "CDVLocalNotification"),
+        //            object: nil
+        //        )
+        //
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(GeoFenceWithHttpPlugin.didReceiveTransition(_:)),
+            name: NSNotification.Name(rawValue: "handleTransition"),
+            object: nil
+        )
+        
         
         call.resolve();
         
     }
     
     @objc func onTransition(_ call:CAPPluginCall){
+        if transitionCallbackId != nil{
+            let call = bridge?.savedCall(withID: transitionCallbackId!);
+            if(call != nil){
+                bridge?.releaseCall(call!);
+            }
+        }
         bridge?.saveCall(call);
-        call.resolve();
+        transitionCallbackId = call.callbackId;
     }
     
     @objc func permissionStatus(_ call : CAPPluginCall){
@@ -90,13 +101,13 @@ public class GeoFenceWithHttpPlugin: CAPPlugin, CLLocationManagerDelegate {
     
     @objc func requestLocationPermission(_ call : CAPPluginCall){
         if CLLocationManager.locationServicesEnabled() {
-
+            
             let status = CLLocationManager.authorizationStatus();
             if status == .denied || status == .authorizedWhenInUse || status == .authorizedAlways{
                 permissionStatus(call);
                 return;
             }
-                
+            
             
             bridge?.saveCall(call);
             permissionCallbackId = call.callbackId;
@@ -117,36 +128,62 @@ public class GeoFenceWithHttpPlugin: CAPPlugin, CLLocationManagerDelegate {
         }
         permissionCallbackId = nil;
     }
-
+    
+    @objc func didReceiveTransition (_ notification: Notification) {
+        log("didReceiveTransition")
+        if notification.object is String {
+            log(notification.object as! String);
+            if(transitionCallbackId == nil){
+                return;
+            }
+            let call = bridge?.savedCall(withID: transitionCallbackId!);
+            if(call == nil){
+                return;
+            }
+        }
+    }
+    
+    @objc func addOrUpdate(_ call: CAPPluginCall) {
+        let fences : JSArray? = call.getArray("fences");
+        for fence in fences!{
+            self.geoNotificationManager.addOrUpdateGeoNotification(JSON(fence))
+        }
+//
+        log("asd");
+//        call.get
+//        DispatchQueue.global(qos: priority).async {
+//            for geo in command.arguments {
+//                self.geoNotificationManager.addOrUpdateGeoNotification(JSON(geo))
+//            }
+//            DispatchQueue.main.async {
+//                let pluginResult = CDVPluginResult(status: CDVCommandStatus_OK)
+//                self.commandDelegate!.send(pluginResult, callbackId: command.callbackId)
+//            }
+//        }
+    }
+    
 }
 
 
 @available(iOS 8.0, *)
 class GeoNotificationManager : NSObject, CLLocationManagerDelegate, UNUserNotificationCenterDelegate {
-    let locationManager = CLLocationManager()
+    let locationManager : CLLocationManager;
     let store = GeoNotificationStore()
     var snoozedFences = [String : Double]()
     var isActive = false
     
     override init() {
-        log("GeoNotificationManager init")
+        self.locationManager = CLLocationManager();
         super.init()
+        
         locationManager.delegate = self
         locationManager.desiredAccuracy = kCLLocationAccuracyBestForNavigation
-        
-        if iOS8 {
-            locationManager.requestAlwaysAuthorization()
-        }
-        
         if #available(iOS 10.0, *) {
             UNUserNotificationCenter.current().delegate = self
         }
     }
     
-    func registerPermissions() {
-        locationManager.requestAlwaysAuthorization()
-    }
-
+    
     func startUpdatingLocation() {
         locationManager.startUpdatingLocation()
         locationManager.startMonitoringSignificantLocationChanges()
@@ -177,7 +214,7 @@ class GeoNotificationManager : NSObject, CLLocationManagerDelegate, UNUserNotifi
         }
         region.notifyOnEntry = 0 != transitionType & 1
         region.notifyOnExit = 0 != transitionType & 2
-
+        
         geoNotification["isInside"] = false
         //store
         store.addOrUpdate(geoNotification)
@@ -197,7 +234,7 @@ class GeoNotificationManager : NSObject, CLLocationManagerDelegate, UNUserNotifi
         }
         
         let authStatus = CLLocationManager.authorizationStatus()
-
+        
         if authStatus != .authorizedAlways {
             if authStatus != .authorizedWhenInUse {
                 errors.append("Error: Location when in use permissions not granted")
@@ -206,25 +243,6 @@ class GeoNotificationManager : NSObject, CLLocationManagerDelegate, UNUserNotifi
             }
         }
         
-        if iOS8 {
-            if let notificationSettings = UIApplication.shared.currentUserNotificationSettings {
-                if notificationSettings.types == UIUserNotificationType() {
-                    errors.append("Error: notification permission missing")
-                } else {
-                    if !notificationSettings.types.contains(.sound) {
-                        warnings.append("Warning: notification settings - sound permission missing")
-                    }
-                    if !notificationSettings.types.contains(.alert) {
-                        warnings.append("Warning: notification settings - alert permission missing")
-                    }
-                    if !notificationSettings.types.contains(.badge) {
-                        warnings.append("Warning: notification settings - badge permission missing")
-                    }
-                }
-            } else {
-                errors.append("Error: notification permission missing")
-            }
-        }
         let ok = (errors.count == 0)
         return (ok, warnings, errors)
     }
@@ -266,8 +284,8 @@ class GeoNotificationManager : NSObject, CLLocationManagerDelegate, UNUserNotifi
     
     func handleTransition(_ id: String, transitionType: Int) {
         if var geoNotification = store.findById(id),
-            !isSnoozed(id),
-            isWithinTimeRange(geoNotification) {
+           !isSnoozed(id),
+           isWithinTimeRange(geoNotification) {
             geoNotification["transitionType"].int = transitionType
             
             if geoNotification["notification"].isExists() && canBeTriggered(geoNotification) {
@@ -617,7 +635,7 @@ class GeoNotificationStore {
             }
         }
     }
-
+    
     func findById(_ id: String) -> JSON? {
         let (resultSet, err) = SD.executeQuery("SELECT * FROM GeoNotifications WHERE Id = ?", withArgs: [id as AnyObject])
         
