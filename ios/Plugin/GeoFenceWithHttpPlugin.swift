@@ -4,6 +4,7 @@ import Capacitor
 import WebKit
 import UserNotifications
 import CoreLocation
+import SwiftJson
 
 
 let TAG = "GeofencePlugin"
