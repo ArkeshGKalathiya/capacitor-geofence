@@ -42,8 +42,7 @@ public class GeoFenceWithHttpPlugin: CAPPlugin, CLLocationManagerDelegate {
         super.init(bridge: bridge, pluginId: pluginId, pluginName: pluginName);
         
         self.locationManager.delegate = self;
-        self.geoNotificationManager.isActive = true;
-        self.geoNotificationManager.startUpdatingLocation();
+        
         
         
     }
@@ -51,13 +50,13 @@ public class GeoFenceWithHttpPlugin: CAPPlugin, CLLocationManagerDelegate {
     
     @objc func initialize(_ call : CAPPluginCall){
         
-        //        NotificationCenter.default.addObserver(
-        //            self,
-        //            selector: #selector(GeoFenceWithHttpPlugin.didReceiveLocalNotification(_:)),
-        //            name: NSNotification.Name(rawValue: "CDVLocalNotification"),
-        //            object: nil
-        //        )
-        //
+//        NotificationCenter.default.addObserver(
+//            self,
+//            selector: #selector(GeoFenceWithHttpPlugin.didReceiveLocalNotification(_:)),
+//            name: NSNotification.Name(rawValue: "CDVLocalNotification"),
+//            object: nil
+//        )
+        
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(GeoFenceWithHttpPlugin.didReceiveTransition(_:)),
@@ -65,7 +64,8 @@ public class GeoFenceWithHttpPlugin: CAPPlugin, CLLocationManagerDelegate {
             object: nil
         )
         
-        
+        self.geoNotificationManager.isActive = true;
+        self.geoNotificationManager.startUpdatingLocation();
         call.resolve();
         
     }
@@ -120,6 +120,11 @@ public class GeoFenceWithHttpPlugin: CAPPlugin, CLLocationManagerDelegate {
     
     public func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         if(permissionCallbackId != nil && bridge != nil){
+            let status = CLLocationManager.authorizationStatus();
+            if(status != .denied && status != .notDetermined){
+                UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]){ granted, error in
+                }
+            }
             let call : CAPPluginCall? = bridge?.savedCall(withID: permissionCallbackId!);
             if(call != nil){
                 permissionStatus(call!);
@@ -130,9 +135,7 @@ public class GeoFenceWithHttpPlugin: CAPPlugin, CLLocationManagerDelegate {
     }
     
     @objc func didReceiveTransition (_ notification: Notification) {
-        log("didReceiveTransition")
         if notification.object is String {
-            log(notification.object as! String);
             if(transitionCallbackId == nil){
                 return;
             }
@@ -140,6 +143,7 @@ public class GeoFenceWithHttpPlugin: CAPPlugin, CLLocationManagerDelegate {
             if(call == nil){
                 return;
             }
+            call?.resolve(JSON(stringLiteral: notification.object as! String).dictionaryObject ?? [:]);
         }
     }
     
@@ -380,6 +384,7 @@ class GeoNotificationManager : NSObject, CLLocationManagerDelegate, UNUserNotifi
             if let title = geo["notification"]["title"] as JSON? {
                 content.title = title.stringValue
             }
+            content.body = "This is dummy body......."
             if(transitionType == 1){
                 if let text = geo["notification"]["enterText"] as JSON? {
                     content.body = text.stringValue
@@ -394,9 +399,10 @@ class GeoNotificationManager : NSObject, CLLocationManagerDelegate, UNUserNotifi
             if let json = geo["notification"]["data"] as JSON? {
                 content.userInfo = ["geofence.notification.data": json.rawString(String.Encoding.utf8.rawValue, options: [])!]
             }
-            let identifier = geo["notification"]["id"].stringValue
+            let identifier = "asdfasdfasdfasdfasdfdfdfdfdf234e234234"
             let request = UNNotificationRequest(identifier: identifier,
                                                 content: content, trigger: nil)
+            
             UNUserNotificationCenter.current().add(request, withCompletionHandler: { (error) in
                 if error != nil {
                     log("Couldn't create notification")
@@ -412,6 +418,7 @@ class GeoNotificationManager : NSObject, CLLocationManagerDelegate, UNUserNotifi
             if let title = geo["notification"]["title"] as JSON? {
                 notification.alertTitle = title.stringValue
             }
+            notification.alertBody = "This is body";
             if(transitionType == 1){
                 if let text = geo["notification"]["enterText"] as JSON? {
                     notification.alertBody = text.stringValue
@@ -421,6 +428,7 @@ class GeoNotificationManager : NSObject, CLLocationManagerDelegate, UNUserNotifi
                     notification.alertBody = text.stringValue
                 }
             }
+            notification.userInfo = [:];
             if let json = geo["notification"]["data"] as JSON? {
                 notification.userInfo = ["geofence.notification.data": json.rawString(String.Encoding.utf8.rawValue, options: [])!]
             }
@@ -456,10 +464,6 @@ class GeoNotificationManager : NSObject, CLLocationManagerDelegate, UNUserNotifi
                 let radius = json["radius"].doubleValue as CLLocationDistance
                 let coord = CLLocation(latitude: json["latitude"].doubleValue, longitude: json["longitude"].doubleValue)
                 
-                
-                log("Thi is for testing only...");
-                
-                let loc = location.distance(from: coord);
                 
                 if location.distance(from: coord) <= radius {
                     if !json["isInside"].boolValue {
