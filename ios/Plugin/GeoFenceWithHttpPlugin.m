@@ -6,5 +6,6 @@
 CAP_PLUGIN(GeoFenceWithHttpPlugin, "GeoFenceWithHttp",
     CAP_PLUGIN_METHOD(initialize, CAPPluginReturnPromise);
     CAP_PLUGIN_METHOD(permissionStatus, CAPPluginReturnPromise);
-    CAP_PLUGIN_METHOD(requestLocationPermission, CAPPluginReturnPromise);       
+    CAP_PLUGIN_METHOD(requestLocationPermission, CAPPluginReturnPromise);
+    CAP_PLUGIN_METHOD(onTransition, CAPPluginReturnPromise);
 )
