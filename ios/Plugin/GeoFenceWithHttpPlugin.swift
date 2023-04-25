@@ -203,7 +203,6 @@ class GeoNotificationManager : NSObject, CLLocationManagerDelegate, UNUserNotifi
     }
     
     func addOrUpdateGeoNotification(_ geoNotification: JSON) {
-        log("Adding or updating geo notification......");
         var geoNotification = geoNotification
         let (_, warnings, errors) = checkRequirements()
         let location = CLLocationCoordinate2DMake(
@@ -222,8 +221,10 @@ class GeoNotificationManager : NSObject, CLLocationManagerDelegate, UNUserNotifi
         region.notifyOnEntry = 0 != transitionType & 1
         region.notifyOnExit = 0 != transitionType & 2
         
+        let existingNotification = store.findById(geoNotification["id"].stringValue);
+        geoNotification["isInside"] = existingNotification?["isInside"] ?? false;
         
-        geoNotification["isInside"] = false
+        
         //store
         store.addOrUpdate(geoNotification)
         locationManager.startMonitoring(for: region)
@@ -292,7 +293,7 @@ class GeoNotificationManager : NSObject, CLLocationManagerDelegate, UNUserNotifi
         if var geoNotification = store.findById(id){
             geoNotification["transitionType"].int = transitionType
             
-            if geoNotification["notification"].isExists() && canBeTriggered(geoNotification) {
+            if geoNotification["notification"].isExists(){
                 notifyAbout(geoNotification,transitionType: transitionType)
             }
             
@@ -342,18 +343,6 @@ class GeoNotificationManager : NSObject, CLLocationManagerDelegate, UNUserNotifi
             
             
         }
-    }
-    
-    func canBeTriggered(_ geo: JSON) -> Bool {
-        let store = GeoNotificationStore()
-        if(geo["notification"]["lastTriggered"].isExists() && geo["notification"]["frequency"].isExists()) {
-            if(Int(NSDate().timeIntervalSince1970) < geo["notification"]["lastTriggered"].int! + geo["notification"]["frequency"].int!) {
-                log("Frequency control. Skip notification")
-                return false
-            }
-        }
-        store.updateLastTriggeredByNotificationId(geo["notification"]["id"].stringValue)
-        return true
     }
     
     func isWithinTimeRange(_ geoNotification: JSON) -> Bool {
@@ -615,9 +604,11 @@ class GeoNotificationStore {
     
     func addOrUpdate(_ geoNotification: JSON) {
         NSLog("geoNotification.description: %@", geoNotification.description)
-        if (findById(geoNotification["id"].stringValue) != nil) {
-            update(geoNotification)
-        }else {
+        
+        let fence = findById(geoNotification["id"].stringValue);
+        if fence != nil{
+            update(geoNotification);
+        }else{
             add(geoNotification)
         }
     }
