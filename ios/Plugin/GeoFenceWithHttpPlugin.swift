@@ -305,7 +305,6 @@ class GeoNotificationManager : NSObject, CLLocationManagerDelegate, UNUserNotifi
             
             
             if geoNotification["url"].isExists() {
-                log("Should post to " + geoNotification["url"].stringValue)
                 let url = URL(string: geoNotification["url"].stringValue)!
                 let headers : [String : Any] = geoNotification["headers"].dictionaryObject ?? [:];
                 let dateFormatter = DateFormatter()
@@ -376,7 +375,6 @@ class GeoNotificationManager : NSObject, CLLocationManagerDelegate, UNUserNotifi
     
     func notifyAbout(_ geo: JSON, transitionType : Int) {
         if #available(iOS 10.0, *) {
-            log("Creating notification iOS > 10")
             let content = UNMutableNotificationContent()
             if let title = geo["notification"]["title"] as JSON? {
                 content.title = title.stringValue
@@ -467,7 +465,6 @@ class GeoNotificationManager : NSObject, CLLocationManagerDelegate, UNUserNotifi
         if hasEntered == true {
             if !fence["isInside"].boolValue {
                 if fence["transitionType"].intValue == 1 || fence["transitionType"].intValue == 3 {
-                    log("Handling inside transition....");
                     handleTransition(fence["id"].stringValue, transitionType: 1)
                 }
                 fence["isInside"] = true
@@ -478,7 +475,6 @@ class GeoNotificationManager : NSObject, CLLocationManagerDelegate, UNUserNotifi
         }else{
             if fence["isInside"].boolValue {
                 if fence["transitionType"].intValue == 2 || fence["transitionType"].intValue == 3 {
-                    log("Handling outside transition....");
                     handleTransition(fence["id"].stringValue, transitionType: 2)
                 }
                 fence["isInside"] = false
@@ -505,14 +501,12 @@ class GeoNotificationManager : NSObject, CLLocationManagerDelegate, UNUserNotifi
     }
     
     func locationManager(_ manager: CLLocationManager, didEnterRegion region: CLRegion) {
-        log("Entering region \(region)")
         if !isActive, var geoNotification = store.findById(region.identifier)  {
             restrictAndProcess(fence: &geoNotification, hasEntered: true);
         }
     }
     
     func locationManager(_ manager: CLLocationManager, didExitRegion region: CLRegion) {
-        log("Exiting region \(region)")
         if !isActive, var geoNotification = store.findById(region.identifier) {
             restrictAndProcess(fence: &geoNotification, hasEntered: false);
         }
