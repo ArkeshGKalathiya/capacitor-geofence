@@ -197,7 +197,7 @@
           "type": "string"
         },
         {
-          "name": "entryText",
+          "name": "enterText",
           "tags": [],
           "docs": "",
           "complexTypes": [],

@@ -30,21 +30,14 @@ public class GeoFenceWithHttpPlugin: CAPPlugin, CLLocationManagerDelegate {
     private let geoNotificationManager : GeoNotificationManager;
     let priority = DispatchQoS.QoSClass.default
     
-    private let locationManager : CLLocationManager;
     var permissionCallbackId : String?;
     var transitionCallbackId : String?;
     var localNotificationCallbackId : String?;
     
     
     public override init(bridge: CAPBridgeProtocol, pluginId: String, pluginName: String) {
-        self.locationManager = CLLocationManager();
         self.geoNotificationManager = GeoNotificationManager();
         super.init(bridge: bridge, pluginId: pluginId, pluginName: pluginName);
-        
-        self.locationManager.delegate = self;
-        
-        
-        
     }
     
     
@@ -63,6 +56,9 @@ public class GeoFenceWithHttpPlugin: CAPPlugin, CLLocationManagerDelegate {
             name: NSNotification.Name(rawValue: "handleTransition"),
             object: nil
         )
+        
+        NotificationCenter.default.addObserver(self, selector: #selector(GeoFenceWithHttpPlugin.authorizationChanged(_:)), name: NSNotification.Name(rawValue: "AuthorizationChanged"), object: nil);
+        
         
         self.geoNotificationManager.isActive = true;
         self.geoNotificationManager.startUpdatingLocation();
@@ -111,14 +107,14 @@ public class GeoFenceWithHttpPlugin: CAPPlugin, CLLocationManagerDelegate {
             
             bridge?.saveCall(call);
             permissionCallbackId = call.callbackId;
-            locationManager.requestAlwaysAuthorization();
+            geoNotificationManager.locationManager.requestAlwaysAuthorization();
         } else {
             permissionStatus(call);
         }
     }
     
     
-    public func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+    @objc func authorizationChanged(_ ob : Any?){
         if(permissionCallbackId != nil && bridge != nil){
             let status = CLLocationManager.authorizationStatus();
             if(status != .denied && status != .notDetermined){
@@ -207,19 +203,13 @@ class GeoNotificationManager : NSObject, CLLocationManagerDelegate, UNUserNotifi
     }
     
     func addOrUpdateGeoNotification(_ geoNotification: JSON) {
+        log("Adding or updating geo notification......");
         var geoNotification = geoNotification
-        log("GeoNotificationManager addOrUpdate")
-        
         let (_, warnings, errors) = checkRequirements()
-        
-        log(warnings)
-        log(errors)
-        
         let location = CLLocationCoordinate2DMake(
             geoNotification["latitude"].doubleValue,
             geoNotification["longitude"].doubleValue
         )
-        log("AddOrUpdate geo: \(geoNotification)")
         let radius = geoNotification["radius"].doubleValue as CLLocationDistance
         let id = geoNotification["id"].stringValue
         
@@ -231,6 +221,7 @@ class GeoNotificationManager : NSObject, CLLocationManagerDelegate, UNUserNotifi
         }
         region.notifyOnEntry = 0 != transitionType & 1
         region.notifyOnExit = 0 != transitionType & 2
+        
         
         geoNotification["isInside"] = false
         //store
@@ -283,7 +274,6 @@ class GeoNotificationManager : NSObject, CLLocationManagerDelegate, UNUserNotifi
         store.remove(id)
         let region = getMonitoredRegion(id)
         if (region != nil) {
-            log("Stoping monitoring region \(id)")
             locationManager.stopMonitoring(for: region!)
         }
         //resetting snoozed fence
@@ -294,15 +284,12 @@ class GeoNotificationManager : NSObject, CLLocationManagerDelegate, UNUserNotifi
         store.clear()
         for object in locationManager.monitoredRegions {
             let region = object
-            log("Stoping monitoring region \(region.identifier)")
             locationManager.stopMonitoring(for: region)
         }
     }
     
     func handleTransition(_ id: String, transitionType: Int) {
-        if var geoNotification = store.findById(id),
-           !isSnoozed(id),
-           isWithinTimeRange(geoNotification) {
+        if var geoNotification = store.findById(id){
             geoNotification["transitionType"].int = transitionType
             
             if geoNotification["notification"].isExists() && canBeTriggered(geoNotification) {
@@ -400,14 +387,13 @@ class GeoNotificationManager : NSObject, CLLocationManagerDelegate, UNUserNotifi
             if let title = geo["notification"]["title"] as JSON? {
                 content.title = title.stringValue
             }
-            content.body = "This is dummy body......."
             if(transitionType == 1){
                 if let text = geo["notification"]["enterText"] as JSON? {
-                    content.body = text.stringValue
+                    content.subtitle = text.stringValue
                 }
             }else if(transitionType == 2){
                 if let text = geo["notification"]["leaveText"] as JSON? {
-                    content.body = text.stringValue
+                    content.subtitle = text.stringValue
                 }
             }
             
@@ -467,13 +453,6 @@ class GeoNotificationManager : NSObject, CLLocationManagerDelegate, UNUserNotifi
         snoozedFences[id] = NSTimeIntervalSince1970 + duration
     }
     
-    func isSnoozed(_ id: String?) -> Bool {
-        guard let id = id, let fenceTime = snoozedFences[id] else {
-            return false
-        }
-        return fenceTime > NSTimeIntervalSince1970
-    }
-    
     func checkTransition(_ location: CLLocation) {
         if let allStored = store.getAll() {
             for var json in allStored {
@@ -482,22 +461,36 @@ class GeoNotificationManager : NSObject, CLLocationManagerDelegate, UNUserNotifi
                 
                 
                 if location.distance(from: coord) <= radius {
-                    if !json["isInside"].boolValue {
-                        if json["transitionType"].intValue == 1 || json["transitionType"].intValue == 3 {
-                            handleTransition(json["id"].stringValue, transitionType: 1)
-                        }
-                        json["isInside"] = true
-                        store.addOrUpdate(json)
-                    }
+                    restrictAndProcess(fence: &json, hasEntered: true);
                 } else {
-                    if json["isInside"].boolValue {
-                        if json["transitionType"].intValue == 2 || json["transitionType"].intValue == 3 {
-                            handleTransition(json["id"].stringValue, transitionType: 2)
-                        }
-                        json["isInside"] = false
-                        store.addOrUpdate(json)
-                    }
+                    restrictAndProcess(fence: &json, hasEntered: false);
                 }
+            }
+        }
+    }
+    
+    func restrictAndProcess(fence : inout JSON, hasEntered : Bool){
+        if hasEntered == true {
+            if !fence["isInside"].boolValue {
+                if fence["transitionType"].intValue == 1 || fence["transitionType"].intValue == 3 {
+                    log("Handling inside transition....");
+                    handleTransition(fence["id"].stringValue, transitionType: 1)
+                }
+                fence["isInside"] = true
+                store.addOrUpdate(fence)
+            }else{
+                log("Suppressing process because user was already inside");
+            }
+        }else{
+            if fence["isInside"].boolValue {
+                if fence["transitionType"].intValue == 2 || fence["transitionType"].intValue == 3 {
+                    log("Handling outside transition....");
+                    handleTransition(fence["id"].stringValue, transitionType: 2)
+                }
+                fence["isInside"] = false
+                store.addOrUpdate(fence)
+            }else{
+                log("Suppressing process because user was already outside");
             }
         }
     }
@@ -518,16 +511,16 @@ class GeoNotificationManager : NSObject, CLLocationManagerDelegate, UNUserNotifi
     }
     
     func locationManager(_ manager: CLLocationManager, didEnterRegion region: CLRegion) {
-        log("Entering region \(region.identifier)")
-        if !isActive {
-            handleTransition(region.identifier, transitionType: 1)
+        log("Entering region \(region)")
+        if !isActive, var geoNotification = store.findById(region.identifier)  {
+            restrictAndProcess(fence: &geoNotification, hasEntered: true);
         }
     }
     
     func locationManager(_ manager: CLLocationManager, didExitRegion region: CLRegion) {
-        log("Exiting region \(region.identifier)")
-        if !isActive {
-            handleTransition(region.identifier, transitionType: 2)
+        log("Exiting region \(region)")
+        if !isActive, var geoNotification = store.findById(region.identifier) {
+            restrictAndProcess(fence: &geoNotification, hasEntered: false);
         }
     }
     
@@ -542,7 +535,7 @@ class GeoNotificationManager : NSObject, CLLocationManagerDelegate, UNUserNotifi
     }
     
     func locationManager(_ manager: CLLocationManager, didDetermineState state: CLRegionState, for region: CLRegion) {
-        log("State for region " + region.identifier)
+        log("State for region " + region.identifier +  "\(state.rawValue)")
     }
     
     func locationManager(_ manager: CLLocationManager, monitoringDidFailFor region: CLRegion?, withError error: Error) {
@@ -587,6 +580,13 @@ class GeoNotificationManager : NSObject, CLLocationManagerDelegate, UNUserNotifi
         }
         completionHandler()
     }
+    
+    
+    func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        NotificationCenter.default.post(name:Notification.Name(rawValue: "AuthorizationChanged"), object: nil);
+    }
+    
+    
 }
 
 class GeoNotificationStore {
@@ -617,8 +617,7 @@ class GeoNotificationStore {
         NSLog("geoNotification.description: %@", geoNotification.description)
         if (findById(geoNotification["id"].stringValue) != nil) {
             update(geoNotification)
-        }
-        else {
+        }else {
             add(geoNotification)
         }
     }

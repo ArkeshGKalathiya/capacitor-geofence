@@ -49,7 +49,7 @@ export interface Notification {
   id?: number;
   title: string;
   text: string;
-  entryText?: string;
+  enterText?: string;
   leaveText?: string;
   smallIcon?: string;
   icon?: string;
