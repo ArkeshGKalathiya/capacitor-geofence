@@ -136,6 +136,8 @@ public class GeoFenceWithHttpPlugin: CAPPlugin, CLLocationManagerDelegate {
     
     @objc func didReceiveTransition (_ notification: Notification) {
         if notification.object is String {
+            let data : String = notification.object as! String;
+            
             if(transitionCallbackId == nil){
                 return;
             }
@@ -143,7 +145,7 @@ public class GeoFenceWithHttpPlugin: CAPPlugin, CLLocationManagerDelegate {
             if(call == nil){
                 return;
             }
-            call?.resolve(JSON(stringLiteral: notification.object as! String).dictionaryObject ?? [:]);
+            call?.resolve(convertToDictionary(text: data));
         }
     }
     
@@ -164,6 +166,17 @@ public class GeoFenceWithHttpPlugin: CAPPlugin, CLLocationManagerDelegate {
 //                self.commandDelegate!.send(pluginResult, callbackId: command.callbackId)
 //            }
 //        }
+    }
+    
+    func convertToDictionary(text: String) -> [String: Any] {
+        if let data = text.data(using: .utf8) {
+            do {
+                return try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any] ?? [:];
+            } catch {
+                print(error.localizedDescription)
+            }
+        }
+        return [:];
     }
     
 }
@@ -296,10 +309,12 @@ class GeoNotificationManager : NSObject, CLLocationManagerDelegate, UNUserNotifi
                 notifyAbout(geoNotification,transitionType: transitionType)
             }
             
+            
+            
             if geoNotification["url"].isExists() {
                 log("Should post to " + geoNotification["url"].stringValue)
                 let url = URL(string: geoNotification["url"].stringValue)!
-                
+                let headers : [String : Any] = geoNotification["headers"].dictionaryObject ?? [:];
                 let dateFormatter = DateFormatter()
                 dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"
                 dateFormatter.timeZone = TimeZone(secondsFromGMT: 0)
@@ -310,10 +325,11 @@ class GeoNotificationManager : NSObject, CLLocationManagerDelegate, UNUserNotifi
                 
                 var request = URLRequest(url: url)
                 request.httpMethod = "post"
-                request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-                request.setValue(geoNotification["applicationId"].stringValue, forHTTPHeaderField: "X-Parse-Application-Id")
-                request.setValue(geoNotification["javascriptId"].stringValue, forHTTPHeaderField: "X-Parse-Javascript-Key")
-                request.setValue(geoNotification["sessionToken"].stringValue, forHTTPHeaderField: "X-Parse-Session-Token")
+                request.setValue("application/json", forHTTPHeaderField: "Content-Type");
+                
+                headers.forEach{ info in
+                    request.setValue((info.value as! String), forHTTPHeaderField: info.key);
+                }
                 request.httpBody = jsonData
                 
                 let task = URLSession.shared.dataTask(with: request) { (data, response, error) in
