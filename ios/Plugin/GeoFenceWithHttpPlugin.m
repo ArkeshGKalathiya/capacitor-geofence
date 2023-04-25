@@ -9,5 +9,6 @@ CAP_PLUGIN(GeoFenceWithHttpPlugin, "GeoFenceWithHttp",
     CAP_PLUGIN_METHOD(requestLocationPermission, CAPPluginReturnPromise);
     CAP_PLUGIN_METHOD(onTransition, CAPPluginReturnCallback);
     CAP_PLUGIN_METHOD(addOrUpdate, CAPPluginReturnPromise);
-           
+    CAP_PLUGIN_METHOD(removeForIds, CAPPluginReturnPromise);
+    CAP_PLUGIN_METHOD(removeAll, CAPPluginReturnPromise);       
 )

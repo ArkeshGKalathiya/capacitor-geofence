@@ -150,18 +150,23 @@ public class GeoFenceWithHttpPlugin: CAPPlugin, CLLocationManagerDelegate {
         for fence in fences!{
             self.geoNotificationManager.addOrUpdateGeoNotification(JSON(fence))
         }
-//
-        log("asd");
-//        call.get
-//        DispatchQueue.global(qos: priority).async {
-//            for geo in command.arguments {
-//                self.geoNotificationManager.addOrUpdateGeoNotification(JSON(geo))
-//            }
-//            DispatchQueue.main.async {
-//                let pluginResult = CDVPluginResult(status: CDVCommandStatus_OK)
-//                self.commandDelegate!.send(pluginResult, callbackId: command.callbackId)
-//            }
-//        }
+    }
+    
+    @objc func removeForIds(_ call: CAPPluginCall){
+        let list : JSArray? = call.getArray("fenceIds");
+        if list != nil{
+            for item in list!{
+                if item is String{
+                    geoNotificationManager.removeGeoNotification(item as! String);
+                }
+            }
+        }
+        call.resolve();
+    }
+    
+    @objc func removeAll(_ call: CAPPluginCall){
+        geoNotificationManager.removeAllGeoNotifications();
+        call.resolve();
     }
     
     func convertToDictionary(text: String) -> [String: Any] {
