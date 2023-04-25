@@ -140,6 +140,8 @@ permissionStatus() => Promise<{ foreground: boolean; background: boolean; }>
 | **`id`**             | <code>number</code>   |
 | **`title`**          | <code>string</code>   |
 | **`text`**           | <code>string</code>   |
+| **`entryText`**      | <code>string</code>   |
+| **`leaveText`**      | <code>string</code>   |
 | **`smallIcon`**      | <code>string</code>   |
 | **`icon`**           | <code>string</code>   |
 | **`openAppOnClick`** | <code>boolean</code>  |

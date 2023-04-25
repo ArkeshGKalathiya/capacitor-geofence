@@ -197,6 +197,20 @@
           "type": "string"
         },
         {
+          "name": "entryText",
+          "tags": [],
+          "docs": "",
+          "complexTypes": [],
+          "type": "string | undefined"
+        },
+        {
+          "name": "leaveText",
+          "tags": [],
+          "docs": "",
+          "complexTypes": [],
+          "type": "string | undefined"
+        },
+        {
           "name": "smallIcon",
           "tags": [],
           "docs": "",
