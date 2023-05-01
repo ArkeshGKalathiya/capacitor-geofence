@@ -89,7 +89,6 @@ public class GeoFenceWithHttpPlugin extends Plugin {
     }
 
 
-
     @PluginMethod
     public void requestLocationPermission(PluginCall call){
         boolean hasForeground = hasForegroundLocationAccess();

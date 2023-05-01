@@ -150,6 +150,7 @@ public class GeoFenceWithHttpPlugin: CAPPlugin, CLLocationManagerDelegate {
         for fence in fences!{
             self.geoNotificationManager.addOrUpdateGeoNotification(JSON(fence))
         }
+        call.resolve();
     }
     
     @objc func removeForIds(_ call: CAPPluginCall){
