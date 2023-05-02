@@ -144,7 +144,9 @@ public class GeoFenceWithHttpPlugin extends Plugin {
 
     @PluginMethod
     public void removeAll(PluginCall call){
-        implementation.removeAll();
+        if(implementation != null){
+            implementation.removeAll();
+        }
         call.resolve();
     }
 
