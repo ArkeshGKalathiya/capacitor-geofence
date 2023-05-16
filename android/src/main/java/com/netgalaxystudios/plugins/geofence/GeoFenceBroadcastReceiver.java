@@ -100,7 +100,7 @@ public class GeoFenceBroadcastReceiver extends BroadcastReceiver {
         PersistableBundle bundle = new PersistableBundle();
         bundle.putString("id", geoNotification.id);
         bundle.putString("url", geoNotification.url);
-        bundle.putString("sessionToken",new Gson().toJson(geoNotification.headers));
+        bundle.putString("headers",new Gson().toJson(geoNotification.headers));
         bundle.putString("transition", transition);
         bundle.putString("date", df.format(new Date()));
 
