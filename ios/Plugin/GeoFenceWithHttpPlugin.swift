@@ -27,18 +27,12 @@ func log(_ messages: [String]) {
 public class GeoFenceWithHttpPlugin: CAPPlugin, CLLocationManagerDelegate {
     private let implementation = GeoFenceWithHttp();
     private let decoder = JSONDecoder();
-    private let geoNotificationManager : GeoNotificationManager;
+    private let geoNotificationManager : GeoNotificationManager = GeoNotificationManager();
     let priority = DispatchQoS.QoSClass.default
     
     var permissionCallbackId : String?;
     var transitionCallbackId : String?;
     var localNotificationCallbackId : String?;
-    
-    
-    public override init(bridge: CAPBridgeProtocol, pluginId: String, pluginName: String) {
-        self.geoNotificationManager = GeoNotificationManager();
-        super.init(bridge: bridge, pluginId: pluginId, pluginName: pluginName);
-    }
     
     
     @objc func initialize(_ call : CAPPluginCall){
