@@ -55,6 +55,10 @@ public class GeoFenceWithHttp {
             store.setGeoNotification(gn);
         }
 
+        if(geofences.isEmpty()){
+            return;
+        }
+
         GeofencingRequest request = new GeofencingRequest.Builder().setInitialTrigger(GeofencingRequest.INITIAL_TRIGGER_ENTER).addGeofences(geofences).build();
         if (ActivityCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             call.reject("MISSING_PERMISSIONS");
